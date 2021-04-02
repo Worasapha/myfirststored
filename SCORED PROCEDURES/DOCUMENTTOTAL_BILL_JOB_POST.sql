@@ -1,0 +1,219 @@
+-- ================================================
+-- Template generated from Template Explorer using:
+-- Create Procedure (New Menu).SQL
+--
+-- Use the Specify Values for Template Parameters 
+-- command (Ctrl-Shift-M) to fill in the parameter 
+-- values below.
+--
+-- This block of comments will not be included in
+-- the definition of the procedure.
+-- ================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		WORASAPHA RATHIPHAYANIPHA
+-- Create date: 2021-03-04
+-- Description:	TOTAL DOCUMENT BILL,JOB,POST
+-- =============================================
+--CREATE PROCEDURE TOTALDOCUMENT_BILL_JOB_POST 
+ALTER PROCEDURE TOTALDOCUMENT_BILL_JOB_POST 
+	-- Add the parameters for the stored procedure here
+	/*
+		EXEC TOTALDOCUMENT_BILL_JOB_POST
+	*/
+AS
+BEGIN
+
+DECLARE @TABLESUCCESS AS INT = 0
+
+UPDATE  tmCOM 
+SET fcIsActive = 'N'
+WHERE fcID In (
+SELECT 
+*
+FROM tmCOM_InActive
+)
+
+UPDATE tmCOM
+SET fcIsActive = 'N'
+WHERE fcName LIKE '%PARCEL%'
+
+
+UPDATE tmCOM
+SET fcIsActive = 'N'
+WHERE fcCode LIKE '%TEMPLATE%'
+
+
+UPDATE tmCOM
+SET fcIsActive = 'N'
+WHERE fcName LIKE '%Visitors control%'
+
+
+UPDATE tmCOM
+SET fcIsActive = 'N'
+WHERE fcName LIKE '%AR_Tem%'
+
+
+
+IF OBJECT_ID(N'TOTALUSES') IS NOT NULL
+BEGIN
+    DROP TABLE TOTALUSES
+
+	CREATE TABLE [dbo].[TOTALUSES](
+		[fcCode] [char](20) NOT NULL,
+		[fcName] [varchar](100) NOT NULL,
+		[BILLTOTAL] NUMERIC(18,2) ,
+		[JOBTOTAL] NUMERIC(18,2) ,
+		[POSTTOTAL] NUMERIC(18,2),
+		[UNITTOTAL] NUMERIC(18,2),
+		[ftCreateDate] DATE
+	)
+	--PRINT 'DROP TABLE'
+	SET @TABLESUCCESS = 1
+END
+ELSE
+BEGIN	
+	CREATE TABLE [dbo].[TOTALUSES](
+		[fcCode] [char](20) NOT NULL,
+		[fcName] [varchar](100) NOT NULL,
+		[BILLTOTAL] NUMERIC(18,2) ,
+		[JOBTOTAL] NUMERIC(18,2) ,
+		[POSTTOTAL] NUMERIC(18,2),
+		[UNITTOTAL] NUMERIC(18,2),
+		[ftCreateDate] DATE
+	)
+	SET @TABLESUCCESS = 1
+	--PRINT 'CRATE TABLE'
+
+END
+
+CREATE TABLE #BILLTemp
+(
+  BILLtmCOMfcID		CHAR(10) COLLATE Thai_CI_AS,
+  BILLTOTAL			INT
+)
+
+
+CREATE TABLE #JOBORDERTemp
+(
+  JOBtmCOMfcID		CHAR(10) COLLATE Thai_CI_AS,
+  JOBTOTAL			INT
+)
+
+CREATE TABLE #POSTTemp
+(
+  POSTtmCOMfcID		CHAR(10) COLLATE Thai_CI_AS,
+  POSTTOTAL			INT
+)
+
+
+CREATE TABLE #UNITTemp
+(
+  PUNITtmCOMfcID		CHAR(10) COLLATE Thai_CI_AS,
+  UNITTOTAL			INT
+)
+
+
+
+INSERT INTO #BILLTemp
+SELECT 
+tmCOM.fcID,
+COUNT(ttODH.fcID) AS BILLTOTAL
+FROM tmCOM WITH (NOLOCK)
+INNER JOIN tmBRN WITH (NOLOCK) ON tmCOM.fcID = tmBRN.fcCOMID
+INNER JOIN tmDCT WITH (NOLOCK) ON TMDCT.fcBRNID = tmBRN.fcID
+INNER JOIN tmDCB WITH (NOLOCK) ON tmDCB.fcDCTID = tmDCT.fcID AND tmDCB.fcIsActive = 'Y' AND tmDCB.fcCode = 'BILL'
+INNER JOIN ttODH WITH (NOLOCK) ON TTODH.fcDCBID = tmDCB.fcID AND ttODH.fcIsCancel != 'C' 
+WHERE tmCOM.fcIsActive = 'Y'
+GROUP BY tmCOM.fcID
+
+
+INSERT INTO #JOBORDERTemp
+SELECT 
+tmCOM.fcID,
+COUNT(ttODH.fcID) AS JOBTOTAL
+FROM tmCOM WITH (NOLOCK)
+INNER JOIN tmBRN WITH (NOLOCK) ON tmCOM.fcID = tmBRN.fcCOMID
+INNER JOIN tmDCT WITH (NOLOCK) ON TMDCT.fcBRNID = tmBRN.fcID
+INNER JOIN tmDCB WITH (NOLOCK) ON tmDCB.fcDCTID = tmDCT.fcID AND tmDCB.fcIsActive = 'Y' AND tmDCB.fcCode LIKE 'JOB%'
+INNER JOIN ttODH WITH (NOLOCK) ON TTODH.fcDCBID = tmDCB.fcID AND ttODH.fcIsCancel != 'C'   
+WHERE tmCOM.fcIsActive = 'Y'
+GROUP BY tmCOM.fcID
+
+
+INSERT INTO #POSTTemp
+SELECT 
+tmCOM.fcID,
+COUNT(ttPostService.fcID) AS POSTTOTAL
+FROM tmCOM WITH (NOLOCK)
+INNER JOIN tmBRN WITH (NOLOCK) ON tmCOM.fcID = tmBRN.fcCOMID
+INNER JOIN tmRoomH WITH (NOLOCK) ON tmRoomH.fcBRNID = tmBRN.fcID AND tmRoomH.fcIsActive = 'Y'
+INNER JOIN ttPostService WITH (NOLOCK) ON ttPostService.fcROOMID =tmRoomH.fcID
+WHERE tmCOM.fcIsActive = 'Y'
+GROUP BY tmCOM.fcID
+
+
+
+INSERT INTO #UNITTemp
+SELECT 
+tmCOM.fcID,
+COUNT(tmRoomH.fcBRNID) AS UNITTOAL
+FROM tmCOM WITH (NOLOCK)
+INNER JOIN tmBRN WITH (NOLOCK) ON tmCOM.fcID = tmBRN.fcCOMID
+INNER JOIN tmRoomH WITH (NOLOCK) ON tmRoomH.fcBRNID = tmBRN.fcID
+WHERE tmCOM.fcIsActive = 'Y'
+GROUP BY tmCOM.fcID
+
+
+INSERT INTO TOTALUSES
+(
+	[fcCode],
+	[fcName],
+	[BILLTOTAL],
+	[JOBTOTAL],
+	[POSTTOTAL],	
+	[UNITTOTAL] ,
+	[ftCreateDate] 
+)
+SELECT
+tmCOM.fcCode
+,tmCOM.fcName
+,BILLTOTAL
+,JOBTOTAL
+,POSTTOTAL
+,UNITTOTAL
+,CONVERT(DATE,tmCOM.ftCreateDate) AS ftCreateDate
+FROM tmCOM WITH (NOLOCK)
+LEFT JOIN #BILLTemp  ON BILLtmCOMfcID  = tmCOM.fcID
+LEFT JOIN #JOBORDERTemp ON JOBtmCOMfcID  = tmCOM.fcID
+LEFT JOIN #POSTTemp ON POSTtmCOMfcID = tmCOM.fcID
+LEFT JOIN #UNITTemp ON PUNITtmCOMfcID = TMCOM.fcID
+WHERE tmCOM.fcIsActive = 'Y'
+----AND ( ISNULL(CONVERT(CHAR,BILLTOTAL),'') != '' AND ISNULL(CONVERT(CHAR,JOBTOTAL),'') != '' AND ISNULL(CONVERT(CHAR,POSTTOTAL),'') != '' AND ISNULL(CONVERT(CHAR,UNITTOTAL),'') != '' )
+ORDER BY tmCOM.fcName
+
+
+
+PRINT 'SUCCESS'
+
+
+/*
+
+DROP TABLE #BILLTemp
+DROP TABLE #NOTICETemp
+DROP TABLE #JOBORDERTemp
+DROP TABLE #POSTTemp
+DROP TABLE #INVTemp
+DROP TABLE #INVCNTemp
+DROP TABLE #PRTemp
+DROP TABLE #POTemp
+DROP TABLE #PITemp
+DROP TABLE #PVTemp
+
+*/
+
+END
+GO

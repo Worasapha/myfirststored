@@ -1,0 +1,1 @@
+sqlcmd -Q "EXEC TOTALDOCUMENT_BILL_JOB_POST" -S popcorn4.c6cmw0oflucl.ap-southeast-1.rds.amazonaws.com -d ERP
